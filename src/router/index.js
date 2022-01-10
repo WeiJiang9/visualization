@@ -5,7 +5,11 @@ import VueRouter from 'vue-router'
 Vue.use(VueRouter)
 
 const routes = [
-
+  {
+    path: '/sellpage',
+    name: 'sellpage',
+    component: () => import('@/views/SellerPage')
+  }
 ]
 
 const router = new VueRouter({
