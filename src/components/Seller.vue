@@ -5,8 +5,8 @@
 </template>
 
 <script>
-import require from '@/network/require'
-import chalk from '@/../public/static/theme/chalk'
+// import require from '@/network/require'
+import { mapState } from 'vuex'
 export default {
   data() {
     return {
@@ -20,20 +20,41 @@ export default {
       timerId: null
     }
   },
+  computed: {
+    ...mapState(['theme'])
+  },
+  created() {
+    this.$socket.registerCallBack('sellerData', this.getData)
+  },
+  watch: {
+    theme() {
+      this.chartInstance.dispose()
+      this.initChart()
+      this.setdataChart()
+      this.screenAdapter()
+      this.updateChart()
+    }
+  },
   mounted() {
-    this.getData()
     this.initChart()
+    // this.getData()
+    this.$socket.send({
+      action: 'getData',
+      socketType: 'sellerData',
+      chartName: 'seller',
+      value: ''
+    })
     window.addEventListener('resize', this.screenAdapter)
     this.screenAdapter()
   },
   destroyed() {
     clearInterval(this.timerId)
-    window.removeEventListener('resize',this.screenAdapter)
+    window.removeEventListener('resize', this.screenAdapter)
   },
   methods: {
     // 初始化echarts对象
     initChart() {
-      this.chartInstance = this.$echarts.init(this.$refs.seller_ref, 'chalk')
+      this.chartInstance = this.$echarts.init(this.$refs.seller_ref, this.theme)
       // 对图表进行初始化配置
       const initOption = {
         title: {
@@ -94,24 +115,22 @@ export default {
         this.timerId && clearInterval(this.timerId)
       })
       this.chartInstance.on('mouseout', () => {
-        this.updataChart()
+        this.updateChart()
       })
     },
     // 获取图表数据
-    async getData() {
-      const { data: ret } = await require({
-        url: 'api/seller'
-      })
+    // async getData() {
+    //   const { data: ret } = await require({
+    //     url: 'api/seller'
+    //   })
+    getData(ret) {
       this.totalPage = Math.ceil(ret.length / 5)
-      // ret.sort((a, b) => {
-      //   return b.value - a.value
-      // })
       ret.forEach((item) => {
         this.allData.names.push(item.name)
         this.allData.values.push(item.value)
       })
       this.setdataChart()
-      this.updataChart()
+      this.updateChart()
     },
 
     // 设置图表数据
@@ -138,7 +157,7 @@ export default {
     },
 
     // 更新数据
-    updataChart() {
+    updateChart() {
       this.timerId && clearInterval(this.timerId)
       this.timerId = setInterval(() => {
         this.currentPage++

@@ -4,9 +4,8 @@
   </div>
 </template>
 <script>
-import require from '@/network/require'
-import chalk from '@/../public/static/theme/chalk'
-
+// import require from '@/network/require'
+import { mapState } from 'vuex'
 export default {
   data() {
     return {
@@ -19,9 +18,32 @@ export default {
       endValue: 9
     }
   },
+  computed: {
+    ...mapState(['theme'])
+  },
+  watch: {
+    theme() {
+      this.chartInstance.dispose()
+      this.initChart()
+      this.setdateChart()
+      this.setZoomOption()
+      this.screenAdapter()
+      this.updateChart()
+    }
+  },
+  created() {
+    this.$socket.registerCallBack('rankData', this.getData)
+  },
   mounted() {
     this.initChart()
-    this.getData()
+    // this.getData()
+    // 发送数据给服务器
+    this.$socket.send({
+      action: 'getData',
+      socketType: 'rankData',
+      chartName: 'rank',
+      value: ''
+    })
     window.addEventListener('resize', this.screenAdapter)
     this.screenAdapter()
   },
@@ -31,7 +53,7 @@ export default {
   },
   methods: {
     initChart() {
-      this.chartInstance = this.$echarts.init(this.$refs.rank_ref, 'chalk')
+      this.chartInstance = this.$echarts.init(this.$refs.rank_ref, this.theme)
       const initOption = {
         title: {
           text: '▎地区销售排行',
@@ -68,12 +90,13 @@ export default {
       this.chartInstance.on('mouseover', () => {
         clearInterval(this.timerId)
       })
-      this.chartInstance.on('mouseout', this.updataChart)
+      this.chartInstance.on('mouseout', this.updateChart)
     },
-    async getData() {
-      const { data: ret } = await require({
-        url: 'rank'
-      })
+    // async getData() {
+    //   const { data: ret } = await require({
+    //     url: 'rank'
+    //   })
+    getData(ret) {
       // 对组数进行排序
       ret.sort((a, b) => b.value - a.value)
       // 处理数据对保存在allData中
@@ -86,7 +109,7 @@ export default {
       // 设置区域缩放
       this.setZoomOption()
       // 开启定时器循环展示数据
-      this.updataChart()
+      this.updateChart()
     },
     // 定义设置数据的方法
     setdateChart() {
@@ -135,7 +158,7 @@ export default {
       this.chartInstance.setOption(zoomOption)
     },
     // 开启定时器刷新数据
-    updataChart() {
+    updateChart() {
       const lenth = this.allData.values.length
       this.timerId && clearInterval(this.timerId)
       this.timerId = setInterval(() => {

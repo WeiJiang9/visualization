@@ -6,9 +6,9 @@
 
 <script>
 import axios from 'axios'
-import require from '@/network/require'
-import chalk from '@/../public/static/theme/chalk'
+// import require from '@/network/require'
 import { getProvinceMapInfo } from '../utils/map_utils'
+import { mapState } from 'vuex'
 export default {
   data: () => {
     return {
@@ -18,16 +18,41 @@ export default {
       mapData: {}
     }
   },
+  computed: {
+    ...mapState(['theme'])
+  },
+  // watch
+  watch: {
+    theme() {
+      // 销毁图表
+      this.chartInstance.dispose()
+      this.initChart()
+      this.screenAdapter()
+      this.updateChart()
+    }
+  },
+  created() {
+    this.$socket.registerCallBack('mapData', this.getData)
+  },
   mounted() {
     this.initChart()
-    this.getData()
-    window.addEventListener('resize', this.screenAdater)
-    this.screenAdater()
+    // this.getData()
+    // 发送数据给服务器
+    this.$socket.send({
+      action: 'getData',
+      socketType: 'mapData',
+      chartName: 'map',
+      value: ''
+    })
+    window.addEventListener('resize', this.screenAdapter)
+    this.screenAdapter()
   },
-  destroyed() {},
+  destroyed() {
+    window.removeEventListener('resize', this.screenAdapter)
+  },
   methods: {
     async initChart() {
-      this.chartInstance = this.$echarts.init(this.$refs.map_ref, 'chalk')
+      this.chartInstance = this.$echarts.init(this.$refs.map_ref, this.theme)
       // 获取地图数据
       const ret = await axios({
         url: 'http://localhost:8999/static/map/china.json',
@@ -84,10 +109,11 @@ export default {
       })
     },
     // 获取散点图数据
-    async getData() {
-      const { data: ret } = await require({
-        url: 'map'
-      })
+    // async getData() {
+    //   const { data: ret } = await require({
+    //     url: 'map'
+    //   })
+    getData(ret) {
       this.allData = ret
       this.updateChart()
     },
@@ -119,7 +145,7 @@ export default {
       }
       this.chartInstance.setOption(dataOption)
     },
-    screenAdater() {
+    screenAdapter() {
       const titleFontSize = (this.$refs.map_ref.offsetWidth / 100) * 3.6
       const adapterOption = {
         title: {

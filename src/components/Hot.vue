@@ -1,18 +1,17 @@
 <template>
   <div class="com-comtainer">
     <div class="com-chart" ref="hot_ref"></div>
-    <div class="p">
-      <p @click="leftClick">&lt;</p>
-      <p @click="rightClick">&gt;</p>
+    <p class="leftBtn" @click="leftClick">&lt;</p>
+    <p class="rightBtn" @click="rightClick">&gt;</p>
+    <div class="cat-name" :class="{ active: theme === 'chalk' }">
+      {{ catName }}
     </div>
-    <div class="cat-name">{{ catName }}</div>
   </div>
 </template>
 
 <script>
-import require from '@/network/require'
-import chalk from '@/../public/static/theme/chalk'
-
+// import require from '@/network/require'
+import { mapState } from 'vuex'
 export default {
   data: () => {
     return {
@@ -23,25 +22,40 @@ export default {
     }
   },
   computed: {
+    ...mapState(['theme']),
     // 获取图表标题
     catName() {
       if (!this.allData) return ''
       return this.allData[this.currentIndex].name
-    },
-    // comtyle() {
-    //   return {
-    //     fontSize: this.titleFontSize + 'px'
-    //   }
-    // }
+    }
   },
-
+  created() {
+    this.$socket.registerCallBack('hotData', this.getData)
+  },
+  watch: {
+    theme() {
+      this.chartInstance.dispose()
+      this.initChart()
+      this.screenAdapter()
+      this.updateChart()
+    }
+  },
   mounted() {
     this.initChart()
-    this.getData()
-    window.addEventListener('resize', this.screenAdater)
-    this.screenAdater()
+    // this.getData()
+    // 发送数据给服务器
+    this.$socket.send({
+      action: 'getData',
+      socketType: 'hotData',
+      chartName: 'hotproduct',
+      value: ''
+    })
+    window.addEventListener('resize', this.screenAdapter)
+    this.screenAdapter()
   },
-  destroyed() {},
+  destroyed() {
+    window.removeEventListener('resize', this.screenAdapter)
+  },
 
   methods: {
     // 听见向左按钮的点击
@@ -60,7 +74,7 @@ export default {
     },
     // 初始化echarts实例对象
     initChart() {
-      this.chartInstance = this.$echarts.init(this.$refs.hot_ref, 'chalk')
+      this.chartInstance = this.$echarts.init(this.$refs.hot_ref, this.theme)
       const initOption = {
         title: {
           left: 20,
@@ -99,10 +113,11 @@ export default {
       this.chartInstance.setOption(initOption)
     },
     // 获取图表数据
-    async getData() {
-      const { data: ret } = await require({
-        url: 'hotproduct'
-      })
+    // async getData() {
+    //   const { data: ret } = await require({
+    //     url: 'hotproduct'
+    //   })
+    getData(ret) {
       this.allData = ret
       this.updateChart()
     },
@@ -141,7 +156,7 @@ export default {
       this.chartInstance.setOption(dataOption)
     },
     // 监听网页大小的变化
-    screenAdater() {
+    screenAdapter() {
       const titleFontSize = (this.$refs.hot_ref.offsetWidth / 100) * 3.6
       this.titleFontSize = titleFontSize
       let adaterOption = {
@@ -151,17 +166,17 @@ export default {
           }
         },
         legend: {
-          itemWidth: titleFontSize / 1.5,
-          itemHeight: titleFontSize / 1.5,
+          itemWidth: titleFontSize,
+          itemHeight: titleFontSize,
           itemGap: titleFontSize / 1.5,
           textStyle: {
-            fontSize: titleFontSize / 2
+            fontSize: titleFontSize
           }
         },
         series: [
           {
-            radius: titleFontSize * 8
-            // center: ['50%','60%']
+            radius: titleFontSize * 6.5,
+            center: ['50%', '60%']
           }
         ]
       }
@@ -176,27 +191,29 @@ export default {
 .com-comtainer {
   position: relative;
 }
-.p {
+.leftBtn,
+.rightBtn {
   position: absolute;
-  left: 0;
-  right: 0;
   top: 50%;
-  transform: translateY(-50%);
-  color: white;
-  display: flex;
-  padding: 0 5%;
-  justify-content: space-between;
+  color: #aaa;
   font-family: cursive;
   font-weight: 700;
-  font-size: 40px;
-}
-.p p {
+  font-size: 30px;
   cursor: pointer;
+}
+.leftBtn {
+  left: 5%;
+}
+.rightBtn {
+  right: 5% !important;
 }
 .cat-name {
   position: absolute;
   right: 10%;
   bottom: 10%;
+  font-size: 12px;
+}
+.active {
   color: white;
 }
 </style>

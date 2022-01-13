@@ -1,6 +1,6 @@
 <template>
   <div class="com-comtainer">
-    <div class="title">
+    <div class="title" :class="{ active: theme === 'chalk' }">
       <div @click="isShow = !isShow" :style="comStyle">
         <span class="title-text">▎{{ showTitle }}</span>
         <span class="selece-icon rotate" v-if="isShow">&gt;</span>
@@ -11,6 +11,7 @@
           class="select-item"
           v-for="item in selectTypes"
           :key="item.key"
+          :style="comStyle"
           @click="handleSelect(item.key)"
         >
           {{ item.text }}
@@ -22,8 +23,8 @@
 </template>
 
 <script>
-import require from '@/network/require'
-import chalk from '@/../public/static/theme/chalk'
+// import require from '@/network/require'
+import { mapState } from 'vuex'
 export default {
   data() {
     return {
@@ -35,6 +36,7 @@ export default {
     }
   },
   computed: {
+    ...mapState(['theme']),
     selectTypes() {
       if (!this.allData) return []
       return this.allData.type.filter((item) => item.text !== this.showTitle)
@@ -54,25 +56,45 @@ export default {
       }
     }
   },
+  watch: {
+    theme() {
+      this.chartInstance.dispose()
+      this.initChart()
+      this.screenAdapter()
+      this.updateChart()
+    }
+  },
+  // created
+  created() {
+    this.$socket.registerCallBack('trendData', this.getData)
+  },
   mounted() {
     this.initChart()
-    this.getData()
+    // this.getData()
+    // 发送数据给服务器
+    this.$socket.send({
+      action: 'getData',
+      socketType: 'trendData',
+      chartName: 'trend',
+      value: ''
+    })
     window.addEventListener('resize', this.screenAdapter)
     this.screenAdapter()
   },
   destroyed() {
     window.removeEventListener('resize', this.screenAdapter)
+    this.$socket.registerCallBack('trendData')
   },
   methods: {
     handleSelect(key) {
       this.shoiceType = key
-      this.updataChart()
+      this.updateChart()
       this.isShow = false
     },
     // 初始化
     initChart() {
       // 初始化echarts实例对象
-      this.chartInstance = this.$echarts.init(this.$refs.trend_ref, 'chalk')
+      this.chartInstance = this.$echarts.init(this.$refs.trend_ref, this.theme)
       // 设置基本配置对象
       const initOption = {
         tooltip: {
@@ -101,15 +123,16 @@ export default {
       this.chartInstance.setOption(initOption)
     },
     // 获取数据
-    async getData() {
-      const { data: ret } = await require({
-        url: 'trend'
-      })
+    // async getData() {
+    //   const { data: ret } = await require({
+    //     url: 'trend'
+    //   })
+    getData(ret) {
       this.allData = ret
-      this.updataChart()
+      this.updateChart()
     },
     // 设置数据配置对象
-    updataChart() {
+    updateChart() {
       const colorArr1 = [
         'rgba(11,168,44,0.5)',
         'rgba(44,110,255,0.5)',
@@ -170,7 +193,7 @@ export default {
           itemHeight: this.titleFontSize,
           itemGap: this.titleFontSize,
           textStyle: {
-            fontSize: this.titleFontSize / 2
+            fontSize: this.titleFontSize
           }
         }
       }
@@ -187,6 +210,8 @@ export default {
   left: 30px;
   top: 30px;
   z-index: 5;
+}
+.active {
   color: white;
 }
 .selece-icon {
@@ -196,6 +221,8 @@ export default {
   display: inline-block;
   transform: rotate(90deg);
   cursor: pointer;
+}
+.active .selece-icon {
   background-color: #222733;
 }
 .rotate {

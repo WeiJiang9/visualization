@@ -6,7 +6,7 @@
 
 <script>
 import require from '@/network/require'
-import chalk from '@/../public/static/theme/chalk'
+import { mapState } from 'vuex'
 
 export default {
   data: () => {
@@ -17,22 +17,41 @@ export default {
       timerId: null
     }
   },
-  computed: {},
-
+  created() {
+    this.$socket.registerCallBack('stockData', this.getData)
+  },
+  computed: {
+    ...mapState(['theme'])
+  },
+  watch: {
+    theme() {
+      this.chartInstance.dispose()
+      this.initChart()
+      this.screenAdapter()
+      this.updateChart()
+    }
+  },
   mounted() {
     this.initChart()
-    this.getData()
-    window.addEventListener('resize', this.screenAdater)
-    this.screenAdater()
+    // this.getData()
+    // 发送数据给服务器
+    this.$socket.send({
+      action: 'getData',
+      socketType: 'stockData',
+      chartName: 'stock',
+      value: ''
+    })
+    window.addEventListener('resize', this.screenAdapter)
+    this.screenAdapter()
   },
   beforeDestroy() {
-    window.removeEventListener('resize', this.screenAdater)
+    window.removeEventListener('resize', this.screenAdapter)
     clearInterval(this.timerId)
   },
   methods: {
     // 初始化echarts实例对象
     initChart() {
-      this.chartInstance = this.$echarts.init(this.$refs.stock_ref, 'chalk')
+      this.chartInstance = this.$echarts.init(this.$refs.stock_ref, this.theme)
       const initOption = {
         title: {
           text: '▎库存和销量分析',
@@ -47,10 +66,11 @@ export default {
       this.chartInstance.on('mouseout', this.startIntervaal)
     },
     // 获取图表数据
-    async getData() {
-      const { data: ret } = await require({
-        url: 'stock'
-      })
+    // async getData() {
+    //   const { data: ret } = await require({
+    //     url: 'stock'
+    //   })
+    getData(ret) {
       this.allData = ret
       this.updateChart()
       this.startIntervaal()
@@ -77,13 +97,15 @@ export default {
       const seriesArr = showData.map((item, index) => {
         return {
           type: 'pie',
-          radius: [110, 100],
           center: centerArr[index],
           hoverAnimation: false,
+          labelLine: {
+            show: false
+          },
           label: {
             normal: {
-              show: true,
-              position: 'inside',
+              show: false,
+              // position: 'inner',
               color: colorArr[index][0]
             }
           },
@@ -124,53 +146,53 @@ export default {
       }, 5000)
     },
     // 监听网页大小的变化
-    screenAdater() {
+    screenAdapter() {
       const titleFontSize = (this.$refs.stock_ref.offsetWidth / 100) * 3.6
-      // const innerRadius = titleFontSize * 2
-      // const outterRadius = innerRadius * 1.125
+      const innerRadius = titleFontSize * 3
+      const outterRadius = innerRadius * 1.125
       let adaterOption = {
         title: {
           textStyle: {
             fontSize: titleFontSize
           }
-        }
-        // series: [
-        //   {
-        //     type: 'pie',
-        //     radius: [outterRadius, innerRadius],
-        //     label: {
-        //       fontSize: titleFontSize
-        //     }
-        //   },
-        //   {
-        //     type: 'pie',
-        //     radius: [outterRadius, innerRadius],
-        //     label: {
-        //       fontSize: titleFontSize
-        //     }
-        //   },
-        //   {
-        //     type: 'pie',
-        //     radius: [outterRadius, innerRadius],
-        //     label: {
-        //       fontSize: titleFontSize
-        //     }
-        //   },
-        //   {
-        //     type: 'pie',
-        //     radius: [outterRadius, innerRadius],
-        //     label: {
-        //       fontSize: titleFontSize
-        //     }
-        //   },
-        //   {
-        //     type: 'pie',
-        //     radius: [outterRadius, innerRadius],
-        //     label: {
-        //       fontSize: titleFontSize
-        //     }
-        //   }
-        // ]
+        },
+        series: [
+          {
+            type: 'pie',
+            radius: [outterRadius, innerRadius],
+            label: {
+              fontSize: titleFontSize / 2
+            }
+          },
+          {
+            type: 'pie',
+            radius: [outterRadius, innerRadius],
+            label: {
+              fontSize: titleFontSize / 2
+            }
+          },
+          {
+            type: 'pie',
+            radius: [outterRadius, innerRadius],
+            label: {
+              fontSize: titleFontSize / 2
+            }
+          },
+          {
+            type: 'pie',
+            radius: [outterRadius, innerRadius],
+            label: {
+              fontSize: titleFontSize / 2
+            }
+          },
+          {
+            type: 'pie',
+            radius: [outterRadius, innerRadius],
+            label: {
+              fontSize: titleFontSize / 2
+            }
+          }
+        ]
       }
       this.chartInstance.setOption(adaterOption)
       this.chartInstance.resize()
